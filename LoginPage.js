@@ -1,13 +1,39 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import logger from './logger';
 
 const LoginPage = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    // Implement login logic here
-    navigation.navigate('Home');
+  const handleLogin = async () => {
+    logger.log('Attempting to log in', { email });
+
+    try {
+      const response = await fetch('https://ghcr-parking-back-end.onrender.com/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        logger.log('Login successful', { email });
+        // Implement your login success logic here
+        // For example, you might want to save the token, user details, etc.
+        // and then navigate to the Home page
+        navigation.navigate('Home');
+      } else {
+        logger.error('Login failed', data);
+        Alert.alert('Login Failed', data.message || 'Invalid credentials');
+      }
+    } catch (error) {
+      logger.error('Login error', error);
+      Alert.alert('Login Failed', 'An error occurred. Please try again.');
+    }
   };
 
   return (
@@ -22,6 +48,8 @@ const LoginPage = ({ navigation }) => {
         placeholder="Email address"
         value={email}
         onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
       />
       <TextInput
         style={styles.input}
