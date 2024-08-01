@@ -21,10 +21,8 @@ const LoginPage = ({ navigation }) => {
       const data = await response.json();
 
       if (response.ok) {
-        logger.log('Login successful', { email });
-        // Implement your login success logic here
-        // For example, you might want to save the token, user details, etc.
-        // and then navigate to the Home page
+        logger.log('Login successful', { email, data });
+        Alert.alert('Login Successful', 'You are now logged in.');
         navigation.navigate('Home');
       } else {
         logger.error('Login failed', data);
