@@ -5,10 +5,7 @@ import logger from './logger';
 
 const HomePage = ({ navigation }) => {
   const [bookings, setBookings] = useState([
-    { date: '15 July 2024', location: 'iSprout Car Park | Space P10', current: true },
-    { date: '16 July 2024', location: 'iSprout Car Park | Space P09', current: false },
-    { date: '17 July 2024', location: 'iSprout Car Park | Space P05', current: false },
-    { date: '18 July 2024', location: 'iSprout Car Park | Space P02', current: false },
+    { date: '15 July 2024', location: 'iSprout Car Park | Space P10', current: true }
   ]);
   const [firstName, setFirstName] = useState('');
   const [showConfirmBox, setShowConfirmBox] = useState(false);
