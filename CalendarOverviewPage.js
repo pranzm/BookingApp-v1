@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Calendar } from 'react-native-calendars';
+import logger from './logger';
 
 const CalendarOverviewPage = ({ navigation }) => {
   const [selectedZone, setSelectedZone] = useState('ispout');
@@ -12,6 +13,17 @@ const CalendarOverviewPage = ({ navigation }) => {
     '2024-02-18': { disabled: true, disableTouchEvent: true },
   });
   const [selectedDate, setSelectedDate] = useState(null);
+
+  useEffect(() => {
+    const today = new Date();
+    const formattedToday = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    setSelectedDate(formattedToday);
+    setMarkedDates((prevDates) => ({
+      ...prevDates,
+      [formattedToday]: { selected: true, marked: true, selectedColor: 'blue' }
+    }));
+    logger.log('Selected date set to:', formattedToday);
+  }, []);
 
   const onDayPress = (day) => {
     if (markedDates[day.dateString]?.disabled) {
@@ -47,9 +59,17 @@ const CalendarOverviewPage = ({ navigation }) => {
     // Implement logic to get a random space
   };
 
+  if (!selectedDate) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Image source={require('./assets/mastek-logo.png')} style={styles.logo} resizeMode="contain" />
+      {/*<Image source={require('./assets/mastek-logo.png')} style={styles.logo} resizeMode="contain" />*/}
       <Text style={styles.tagline}>Trust. Value. Velocity</Text>
       
       <Picker
@@ -62,7 +82,7 @@ const CalendarOverviewPage = ({ navigation }) => {
       </Picker>
 
       <Calendar
-        current={'2024-02-01'}
+        current={selectedDate}
         minDate={'2024-01-01'}
         onDayPress={onDayPress}
         monthFormat={'MMMM yyyy'}
