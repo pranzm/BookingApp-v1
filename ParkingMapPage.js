@@ -1,23 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 const ParkingMapPage = ({ route, navigation }) => {
   const { selectedDate } = route.params;
-  const [parkingSpots, setParkingSpots] = useState({
-    P01: 'occupied',
-    P02: 'available',
-    P03: 'occupied',
-    P04: 'occupied',
-    P05: 'occupied',
-    P06: 'available',
-    P07: 'occupied',
-    P08: 'available',
-    P09: 'available',
-    P10: 'available',
-  });
+  const [parkingSpots, setParkingSpots] = useState({});
   const [selectedSpot, setSelectedSpot] = useState(null);
-  const [timeRange, setTimeRange] = useState('08:00 - 18:00');
+  const [startTimePickerVisible, setStartTimePickerVisible] = useState(false);
+  const [endTimePickerVisible, setEndTimePickerVisible] = useState(false);
+  const [startTime, setStartTime] = useState(new Date());
+  const [endTime, setEndTime] = useState(new Date());
+
+  useEffect(() => {
+    fetchParkingSlots();
+  }, []);
+
+  const fetchParkingSlots = async () => {
+    try {
+      const response = await fetch('https://ghcr-parking-back-end.onrender.com/api/getParkingSlots');
+      const data = await response.json();
+      if (response.ok) {
+        const slots = data.data.reduce((acc, slot) => {
+          acc[`P${slot.slotNumber.toString().padStart(2, '0')}`] = slot.isOccupied ? 'occupied' : 'available';
+          return acc;
+        }, {});
+        setParkingSpots(slots);
+      } else {
+        Alert.alert('Error', 'Failed to retrieve parking slots');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred while fetching parking slots');
+    }
+  };
 
   const handleParkingSpotPress = (spot) => {
     if (parkingSpots[spot] === 'available') {
@@ -29,7 +44,7 @@ const ParkingMapPage = ({ route, navigation }) => {
 
   const handleConfirmBooking = () => {
     if (selectedSpot) {
-      Alert.alert(`Parking spot ${selectedSpot} booked for ${selectedDate} from ${timeRange}.`);
+      Alert.alert(`Parking spot ${selectedSpot} booked for ${selectedDate} from ${formatTime(startTime)} to ${formatTime(endTime)}.`);
       // Implement booking logic here
     }
   };
@@ -38,9 +53,40 @@ const ParkingMapPage = ({ route, navigation }) => {
     setSelectedSpot(null);
   };
 
+  const showStartTimePicker = () => {
+    setStartTimePickerVisible(true);
+  };
+
+  const hideStartTimePicker = () => {
+    setStartTimePickerVisible(false);
+  };
+
+  const showEndTimePicker = () => {
+    setEndTimePickerVisible(true);
+  };
+
+  const hideEndTimePicker = () => {
+    setEndTimePickerVisible(false);
+  };
+
+  const handleConfirmStartTime = (date) => {
+    setStartTime(date);
+    hideStartTimePicker();
+  };
+
+  const handleConfirmEndTime = (date) => {
+    setEndTime(date);
+    hideEndTimePicker();
+  };
+
+  const formatTime = (date) => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   return (
     <View style={styles.container}>
-      <Image source={require('./assets/mastek-logo.png')} style={styles.logo} />
       <Text style={styles.tagline}>Trust. Value. Velocity</Text>
 
       <Picker selectedValue={selectedDate} style={styles.picker}>
@@ -67,19 +113,27 @@ const ParkingMapPage = ({ route, navigation }) => {
         <View style={styles.confirmContainer}>
           <Text style={styles.confirmText}>Book Space for {selectedSpot}?</Text>
           <Text style={styles.detailsText}>
-            <Text style={styles.boldText}>{selectedDate}</Text> <Text>{timeRange}</Text>
+            <Text style={styles.boldText}>{selectedDate}</Text> from <Text>{formatTime(startTime)}</Text> to <Text>{formatTime(endTime)}</Text>
           </Text>
           <View style={styles.timePicker}>
-            <Picker
-              selectedValue={timeRange}
-              onValueChange={(itemValue) => setTimeRange(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="08:00 - 18:00" value="08:00 - 18:00" />
-              <Picker.Item label="09:00 - 17:00" value="09:00 - 17:00" />
-              <Picker.Item label="10:00 - 16:00" value="10:00 - 16:00" />
-              {/* Add more time ranges as needed */}
-            </Picker>
+            <TouchableOpacity onPress={showStartTimePicker}>
+              <Text style={styles.timePickerText}>Select Start Time</Text>
+            </TouchableOpacity>
+            <DateTimePickerModal
+              isVisible={startTimePickerVisible}
+              mode="time"
+              onConfirm={handleConfirmStartTime}
+              onCancel={hideStartTimePicker}
+            />
+            <TouchableOpacity onPress={showEndTimePicker}>
+              <Text style={styles.timePickerText}>Select End Time</Text>
+            </TouchableOpacity>
+            <DateTimePickerModal
+              isVisible={endTimePickerVisible}
+              mode="time"
+              onConfirm={handleConfirmEndTime}
+              onCancel={hideEndTimePicker}
+            />
           </View>
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmBooking}>
@@ -116,11 +170,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#e1f5fe',
     padding: 20,
     alignItems: 'center',
-  },
-  logo: {
-    width: 200,
-    height: 60,
-    marginBottom: 20,
   },
   tagline: {
     fontSize: 18,
@@ -176,6 +225,12 @@ const styles = StyleSheet.create({
   timePicker: {
     width: '100%',
     marginBottom: 20,
+    alignItems: 'center',
+  },
+  timePickerText: {
+    fontSize: 16,
+    color: '#4c9fbf',
+    marginBottom: 10,
   },
   buttonContainer: {
     flexDirection: 'row',
