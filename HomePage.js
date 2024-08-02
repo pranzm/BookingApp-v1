@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from './logger';
 
 const HomePage = ({ navigation }) => {
   const [bookings, setBookings] = useState([
@@ -8,8 +10,18 @@ const HomePage = ({ navigation }) => {
     { date: '17 July 2024', location: 'iSprout Car Park | Space P05', current: false },
     { date: '18 July 2024', location: 'iSprout Car Park | Space P02', current: false },
   ]);
+  const [firstName, setFirstName] = useState('');
   const [showConfirmBox, setShowConfirmBox] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+
+  useEffect(() => {
+    const fetchFirstName = async () => {
+      const storedFirstName = await AsyncStorage.getItem('firstName');
+      setFirstName(storedFirstName);
+    };
+
+    fetchFirstName();
+  }, []);
 
   const handleCancelBooking = (index) => {
     setSelectedBooking(bookings[index]);
@@ -29,22 +41,37 @@ const HomePage = ({ navigation }) => {
     setShowConfirmBox(false);
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+  const handleLogout = async () => {
+    logger.log('Attempting to log out');
+
+    try {
+      const token = await AsyncStorage.getItem('token'); // Retrieve token from AsyncStorage
+
+      const response = await fetch('https://ghcr-parking-back-end.onrender.com/api/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`, // Include token in the Authorization header
         },
-        {
-          text: 'Logout',
-          onPress: () => navigation.navigate('Login'),
-        },
-      ],
-      { cancelable: true }
-    );
+      });
+
+      const data = await response.json();
+      logger.log('Response:', { status: response.status, data });
+
+      if (response.ok) {
+        await AsyncStorage.removeItem('token'); // Remove token from AsyncStorage
+        await AsyncStorage.removeItem('firstName'); // Remove first name from AsyncStorage
+        logger.log('Logout successful');
+        Alert.alert('Logout Successful', 'You have been logged out.');
+        navigation.navigate('Login');
+      } else {
+        logger.error('Logout failed', data);
+        Alert.alert('Logout Failed', data.message || 'An error occurred during logout');
+      }
+    } catch (error) {
+      logger.error('Logout error', error);
+      Alert.alert('Logout Failed', 'An error occurred. Please try again.');
+    }
   };
 
   return (
@@ -52,7 +79,7 @@ const HomePage = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollViewContainer}>
         <Image source={require('./assets/mastek-logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.tagline}>Trust. Value. Velocity</Text>
-        <Text style={styles.greeting}>Good afternoon/evening, <Text style={styles.username}>Username</Text></Text>
+        <Text style={styles.greeting}>Good afternoon/evening, <Text style={styles.username}>{firstName}</Text></Text>
 
         {bookings.map((booking, index) => (
           <View key={index} style={styles.bookingContainer}>

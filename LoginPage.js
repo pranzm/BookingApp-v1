@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import logger from './logger';
 
 const LoginPage = ({ navigation }) => {
@@ -19,14 +20,21 @@ const LoginPage = ({ navigation }) => {
       });
 
       const data = await response.json();
+      logger.log('Response:', { status: response.status, data });
 
-      if (response.ok) {
+      // Adjust the extraction to match the response structure
+      const token = data.data;
+      const firstName = email.split('@')[0]; // Extract the first part of the email as the first name
+
+      if (token) {
+        await AsyncStorage.setItem('token', token); // Save token to AsyncStorage
+        await AsyncStorage.setItem('firstName', firstName); // Save first name to AsyncStorage
         logger.log('Login successful', { email, data });
         Alert.alert('Login Successful', 'You are now logged in.');
         navigation.navigate('Home');
       } else {
-        logger.error('Login failed', data);
-        Alert.alert('Login Failed', data.message || 'Invalid credentials');
+        logger.error('Login failed, token missing', data);
+        Alert.alert('Login Failed', 'Invalid credentials');
       }
     } catch (error) {
       logger.error('Login error', error);
