@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert, Animated } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import logger from './logger';
@@ -9,11 +9,12 @@ const HomePage = ({ navigation }) => {
   const [firstName, setFirstName] = useState('');
   const [showConfirmBox, setShowConfirmBox] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const scrollY = new Animated.Value(0);
 
   const fetchBookings = async () => {
     try {
-      const storedBookings = JSON.parse(await AsyncStorage.getItem('bookings')) || [];
+      const userEmail = await AsyncStorage.getItem('userEmail');
+      const userBookingsKey = `bookings_${userEmail}`;
+      const storedBookings = JSON.parse(await AsyncStorage.getItem(userBookingsKey)) || [];
       setBookings(storedBookings);
     } catch (error) {
       logger.error('Error fetching bookings:', error);
@@ -65,7 +66,9 @@ const HomePage = ({ navigation }) => {
       if (data.status === 200) {
         const updatedBookings = bookings.filter((booking) => booking !== selectedBooking);
         setBookings(updatedBookings);
-        await AsyncStorage.setItem('bookings', JSON.stringify(updatedBookings));
+        const userEmail = await AsyncStorage.getItem('userEmail');
+        const userBookingsKey = `bookings_${userEmail}`;
+        await AsyncStorage.setItem(userBookingsKey, JSON.stringify(updatedBookings));
         setSelectedBooking(null);
         setShowConfirmBox(false);
         Alert.alert('Booking cancelled.');
@@ -117,21 +120,9 @@ const HomePage = ({ navigation }) => {
     }
   };
 
-  const footerTranslate = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, 100],
-    extrapolate: 'clamp',
-  });
-
   return (
     <View style={styles.container}>
-      <Animated.ScrollView 
-        contentContainerStyle={styles.scrollViewContainer}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-      >
+      <ScrollView contentContainerStyle={styles.scrollViewContainer}>
         <Image source={require('./assets/mastek-logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.tagline}>Trust. Value. Velocity</Text>
         <Text style={styles.greeting}>Good afternoon/evening, <Text style={styles.username}>{firstName}</Text></Text>
@@ -160,7 +151,7 @@ const HomePage = ({ navigation }) => {
         <TouchableOpacity style={styles.newBookingButton} onPress={() => navigation.navigate('CalendarOverview')}>
           <Text style={styles.newBookingButtonText}>MAKE A NEW BOOKING</Text>
         </TouchableOpacity>
-      </Animated.ScrollView>
+      </ScrollView>
 
       {showConfirmBox && selectedBooking && (
         <View style={styles.confirmOverlay}>
@@ -179,7 +170,7 @@ const HomePage = ({ navigation }) => {
         </View>
       )}
 
-      <Animated.View style={[styles.footer, { transform: [{ translateY: footerTranslate }] }]}>
+      <View style={styles.footer}>
         <TouchableOpacity onPress={() => navigation.navigate('Home')}>
           <Image source={require('./assets/home-icon.png')} style={styles.footerIcon} />
         </TouchableOpacity>
@@ -195,7 +186,7 @@ const HomePage = ({ navigation }) => {
         <TouchableOpacity onPress={handleLogout}>
           <Image source={require('./assets/logout-icon.png')} style={styles.footerIcon} />
         </TouchableOpacity>
-      </Animated.View>
+      </View>
     </View>
   );
 };

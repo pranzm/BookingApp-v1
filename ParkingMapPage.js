@@ -64,18 +64,9 @@ const ParkingMapPage = ({ route, navigation }) => {
         const data = await response.json();
 
         if (data.status === 201) {
-          Alert.alert('Booking Confirmed', `Parking spot ${selectedSpot} booked for ${selectedDate}.`);
-
-          // Update the spot color to red after successful booking
-          setParkingSpots(prevSpots =>
-            prevSpots.map(spot =>
-              spot.slotNumber === selectedSpot ? { ...spot, isOccupied: true } : spot
-            )
-          );
-
-          // Save the booking details in AsyncStorage
+          const bookingId = data.data.bookingId;
           const newBooking = {
-            bookingId: data.data.bookingId,
+            bookingId,
             date: selectedDate,
             spot: selectedSpot,
             startTime: timeRange.start.toLocaleTimeString(),
@@ -83,9 +74,16 @@ const ParkingMapPage = ({ route, navigation }) => {
             current: true,
           };
 
-          const storedBookings = JSON.parse(await AsyncStorage.getItem('bookings')) || [];
-          storedBookings.push(newBooking);
-          await AsyncStorage.setItem('bookings', JSON.stringify(storedBookings));
+          const userBookingsKey = `bookings_${userEmail}`;
+          const storedBookings = JSON.parse(await AsyncStorage.getItem(userBookingsKey)) || [];
+          const updatedBookings = [...storedBookings, newBooking];
+
+          await AsyncStorage.setItem(userBookingsKey, JSON.stringify(updatedBookings));
+
+          Alert.alert('Booking Confirmed', `Parking spot ${selectedSpot} booked for ${selectedDate}.`);
+          setParkingSpots(prevSpots => prevSpots.map(spot =>
+            spot.slotNumber === selectedSpot ? { ...spot, isOccupied: true } : spot
+          ));
         } else {
           logger.error('Booking failed:', data);
           Alert.alert('Booking Failed', data.message || 'Failed to book the parking spot.');
