@@ -1,15 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import logger from './logger';
 
 const HomePage = ({ navigation }) => {
-  const [bookings, setBookings] = useState([
-    { date: '15 July 2024', location: 'iSprout Car Park | Space P10', current: true }
-  ]);
+  const [bookings, setBookings] = useState([]);
   const [firstName, setFirstName] = useState('');
   const [showConfirmBox, setShowConfirmBox] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const scrollY = new Animated.Value(0);
+
+  const fetchBookings = async () => {
+    try {
+      const storedBookings = JSON.parse(await AsyncStorage.getItem('bookings')) || [];
+      setBookings(storedBookings);
+    } catch (error) {
+      logger.error('Error fetching bookings:', error);
+      Alert.alert('Error', 'Failed to fetch bookings.');
+    }
+  };
 
   useEffect(() => {
     const fetchFirstName = async () => {
@@ -18,19 +28,55 @@ const HomePage = ({ navigation }) => {
     };
 
     fetchFirstName();
+    fetchBookings();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchBookings();
+    }, [])
+  );
+
   const handleCancelBooking = (index) => {
+    logger.log('handleCancelBooking:', { index, booking: bookings[index] });
     setSelectedBooking(bookings[index]);
     setShowConfirmBox(true);
   };
 
-  const confirmCancelBooking = () => {
-    const updatedBookings = bookings.filter((booking) => booking !== selectedBooking);
-    setBookings(updatedBookings);
-    setSelectedBooking(null);
-    setShowConfirmBox(false);
-    Alert.alert('Booking cancelled.');
+  const confirmCancelBooking = async () => {
+    if (!selectedBooking) {
+      logger.error('confirmCancelBooking: No booking selected');
+      Alert.alert('Error', 'No booking selected.');
+      return;
+    }
+
+    try {
+      logger.log('confirmCancelBooking:', { bookingId: selectedBooking.bookingId });
+      const response = await fetch('https://ghcr-parking-back-end.onrender.com/api/cancel-booking', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ bookingId: selectedBooking.bookingId }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 200) {
+        const updatedBookings = bookings.filter((booking) => booking !== selectedBooking);
+        setBookings(updatedBookings);
+        await AsyncStorage.setItem('bookings', JSON.stringify(updatedBookings));
+        setSelectedBooking(null);
+        setShowConfirmBox(false);
+        Alert.alert('Booking cancelled.');
+      } else {
+        logger.error('Cancel booking failed:', data);
+        Alert.alert('Error', data.message || 'Failed to cancel booking.');
+      }
+    } catch (error) {
+      logger.error('Error cancelling booking:', error);
+      Alert.alert('Error', 'Failed to cancel booking.');
+    }
   };
 
   const closeConfirmBox = () => {
@@ -71,9 +117,21 @@ const HomePage = ({ navigation }) => {
     }
   };
 
+  const footerTranslate = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, 100],
+    extrapolate: 'clamp',
+  });
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollViewContainer}>
+      <Animated.ScrollView 
+        contentContainerStyle={styles.scrollViewContainer}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+      >
         <Image source={require('./assets/mastek-logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.tagline}>Trust. Value. Velocity</Text>
         <Text style={styles.greeting}>Good afternoon/evening, <Text style={styles.username}>{firstName}</Text></Text>
@@ -87,7 +145,7 @@ const HomePage = ({ navigation }) => {
               <Image source={require('./assets/car-icon.png')} style={styles.icon} />
               <View style={styles.bookingDetails}>
                 <Text style={styles.date}>{booking.date}</Text>
-                <Text style={styles.location}>{booking.location}</Text>
+                <Text style={styles.location}>{`Space ${booking.spot} from ${booking.startTime} to ${booking.endTime}`}</Text>
               </View>
               <TouchableOpacity
                 style={styles.cancelButton}
@@ -102,12 +160,12 @@ const HomePage = ({ navigation }) => {
         <TouchableOpacity style={styles.newBookingButton} onPress={() => navigation.navigate('CalendarOverview')}>
           <Text style={styles.newBookingButtonText}>MAKE A NEW BOOKING</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {showConfirmBox && (
+      {showConfirmBox && selectedBooking && (
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmBox}>
-            <Text style={styles.confirmTitle}>Cancel booking for space {selectedBooking.location.split(' ').pop()}?</Text>
+            <Text style={styles.confirmTitle}>Cancel booking for space {selectedBooking.spot}?</Text>
             <Text style={styles.confirmText}>{selectedBooking.date}</Text>
             <View style={styles.confirmButtons}>
               <TouchableOpacity style={styles.confirmButton} onPress={confirmCancelBooking}>
@@ -121,7 +179,7 @@ const HomePage = ({ navigation }) => {
         </View>
       )}
 
-      <View style={styles.footer}>
+      <Animated.View style={[styles.footer, { transform: [{ translateY: footerTranslate }] }]}>
         <TouchableOpacity onPress={() => navigation.navigate('Home')}>
           <Image source={require('./assets/home-icon.png')} style={styles.footerIcon} />
         </TouchableOpacity>
@@ -137,7 +195,7 @@ const HomePage = ({ navigation }) => {
         <TouchableOpacity onPress={handleLogout}>
           <Image source={require('./assets/logout-icon.png')} style={styles.footerIcon} />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </View>
   );
 };
@@ -159,7 +217,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   tagline: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#f57c00',
     marginBottom: 20,
   },
@@ -171,7 +229,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   bookingContainer: {
-    width: '90%',
+    width: '100%',
     marginBottom: 20,
     backgroundColor: '#ffcc80',
     padding: 10,
@@ -196,7 +254,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   date: {
-    fontSize: 16,
+    fontSize: 14,
   },
   location: {
     fontSize: 14,
@@ -222,7 +280,7 @@ const styles = StyleSheet.create({
   },
   newBookingButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   confirmOverlay: {
