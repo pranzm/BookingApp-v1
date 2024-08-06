@@ -6,22 +6,16 @@ import logger from './logger';
 
 const CalendarOverviewPage = ({ navigation }) => {
   const [selectedZone, setSelectedZone] = useState('ispout');
-  const [markedDates, setMarkedDates] = useState({
-    '2024-02-12': { selected: true, marked: true, selectedColor: 'red', disabled: true },
-    '2024-02-16': { marked: true },
-    '2024-02-17': { marked: true, dotColor: 'red', activeOpacity: 0 },
-    '2024-02-18': { disabled: true, disableTouchEvent: true },
-  });
+  const [markedDates, setMarkedDates] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
     const today = new Date();
     const formattedToday = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
     setSelectedDate(formattedToday);
-    setMarkedDates((prevDates) => ({
-      ...prevDates,
+    setMarkedDates({
       [formattedToday]: { selected: true, marked: true, selectedColor: 'blue' }
-    }));
+    });
     logger.log('Selected date set to:', formattedToday);
   }, []);
 
@@ -31,12 +25,7 @@ const CalendarOverviewPage = ({ navigation }) => {
       return;
     }
 
-    const newMarkedDates = { ...markedDates };
-    newMarkedDates[day.dateString] = {
-      ...newMarkedDates[day.dateString],
-      selected: !newMarkedDates[day.dateString]?.selected,
-      selectedColor: !newMarkedDates[day.dateString]?.selected ? 'blue' : undefined,
-    };
+    const newMarkedDates = { [day.dateString]: { selected: true, marked: true, selectedColor: 'blue' } };
 
     setMarkedDates(newMarkedDates);
     setSelectedDate(day.dateString);
@@ -69,7 +58,6 @@ const CalendarOverviewPage = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/*<Image source={require('./assets/mastek-logo.png')} style={styles.logo} resizeMode="contain" />*/}
       <Text style={styles.tagline}>Trust. Value. Velocity</Text>
       
       <Picker
@@ -139,11 +127,6 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 80,  // Ensure enough padding at the bottom to avoid overlap
     alignItems: 'center',
-  },
-  logo: {
-    width: '100%', // Use a percentage for the width
-    height: 60, // Adjust height as needed
-    marginBottom: 20,
   },
   tagline: {
     fontSize: 18,

@@ -7,6 +7,39 @@ const LoginPage = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const fetchUserDetails = async (email) => {
+    try {
+      const response = await fetch('https://ghcr-parking-back-end.onrender.com/api/users', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      logger.log('User List Response:', data);
+
+      if (data && data.length > 0) {
+        const user = data.find(user => user.email === email);
+        if (user) {
+          return user;
+        } else {
+          logger.error('User not found in the list', data);
+          Alert.alert('Login Failed', 'User not found.');
+          return null;
+        }
+      } else {
+        logger.error('Failed to fetch user list', data);
+        Alert.alert('Login Failed', 'Failed to fetch user list.');
+        return null;
+      }
+    } catch (error) {
+      logger.error('Fetch user details error', error);
+      Alert.alert('Login Failed', 'An error occurred while fetching user details.');
+      return null;
+    }
+  };
+
   const handleLogin = async () => {
     logger.log('Attempting to log in', { email });
 
@@ -20,18 +53,20 @@ const LoginPage = ({ navigation }) => {
       });
 
       const data = await response.json();
-      logger.log('Response:', { status: response.status, data });
+      logger.log('Login Response:', data);
 
-      // Adjust the extraction to match the response structure
       const token = data.data;
-      const firstName = email.split('@')[0]; // Extract the first part of the email as the first name
-
       if (token) {
-        await AsyncStorage.setItem('token', token); // Save token to AsyncStorage
-        await AsyncStorage.setItem('firstName', firstName); // Save first name to AsyncStorage
-        logger.log('Login successful', { email, data });
-        Alert.alert('Login Successful', 'You are now logged in.');
-        navigation.navigate('Home');
+        const userDetails = await fetchUserDetails(email);
+        if (userDetails) {
+          await AsyncStorage.setItem('token', token);
+          await AsyncStorage.setItem('firstName', userDetails.firstName);
+          await AsyncStorage.setItem('username', userDetails.username);
+          await AsyncStorage.setItem('userEmail', userDetails.email);
+          logger.log('Login successful', { email, data });
+          Alert.alert('Login Successful', 'You are now logged in.');
+          navigation.navigate('Home');
+        }
       } else {
         logger.error('Login failed, token missing', data);
         Alert.alert('Login Failed', 'Invalid credentials');
