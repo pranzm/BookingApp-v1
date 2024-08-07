@@ -125,7 +125,7 @@ const HomePage = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollViewContainer}>
         <Image source={require('./assets/mastek-logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.tagline}>Trust. Value. Velocity</Text>
-        <Text style={styles.greeting}>Good afternoon/evening, <Text style={styles.username}>{firstName}</Text></Text>
+        <Text style={styles.greeting}>Good Afternoon, <Text style={styles.username}>{firstName}</Text></Text>
 
         {bookings.map((booking, index) => (
           <View key={index} style={styles.bookingContainer}>

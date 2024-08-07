@@ -48,8 +48,8 @@ const ParkingMapPage = ({ route, navigation }) => {
           username,
           userEmail,
           parkingSlotNumber: selectedSpot,
-          bookingStartDateTime: timeRange.start.toISOString(),
-          bookingEndDateTime: timeRange.end.toISOString(),
+          bookingStartDateTime: new Date(`${selectedDate}T${timeRange.start.toTimeString().split(' ')[0]}`).toISOString(),
+          bookingEndDateTime: new Date(`${selectedDate}T${timeRange.end.toTimeString().split(' ')[0]}`).toISOString(),
           comment: "Booking through app"
         };
 

@@ -13,9 +13,10 @@ const CalendarOverviewPage = ({ navigation }) => {
     const today = new Date();
     const formattedToday = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
     setSelectedDate(formattedToday);
-    setMarkedDates({
+    setMarkedDates((prevDates) => ({
+      ...prevDates,
       [formattedToday]: { selected: true, marked: true, selectedColor: 'blue' }
-    });
+    }));
     logger.log('Selected date set to:', formattedToday);
   }, []);
 
@@ -25,7 +26,12 @@ const CalendarOverviewPage = ({ navigation }) => {
       return;
     }
 
-    const newMarkedDates = { [day.dateString]: { selected: true, marked: true, selectedColor: 'blue' } };
+    const newMarkedDates = { ...markedDates };
+    newMarkedDates[day.dateString] = {
+      ...newMarkedDates[day.dateString],
+      selected: !newMarkedDates[day.dateString]?.selected,
+      selectedColor: !newMarkedDates[day.dateString]?.selected ? 'blue' : undefined,
+    };
 
     setMarkedDates(newMarkedDates);
     setSelectedDate(day.dateString);
